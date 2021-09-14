@@ -1,0 +1,61 @@
+From garagan@ug.cs.dal.ca Mon Feb  3 08:59:16 1997
+Date: Mon, 3 Feb 1997 00:21:44 -0400
+From: Sean Garagan <garagan@ug.cs.dal.ca>
+To: Michael Shepherd <shepherd@ug.cs.dal.ca>
+Subject: Socket reuse
+
+Hi Sir,
+
+I just wanted to send you this snippet of code that will allow the servers
+the students in 3700 will be writing to rebind to a socket without having to
+wait for the kernel timeout.  Last year before I posted this, people had to
+wait up to 5 minutes for the socket to be freed.  The functio setsockopt()
+has changed somewhat, in Linux (and the latest libc) it is:
+
+       int setsockopt(int s, int level, int optname,  const  void
+       *optval, int optlen);
+
+While on UG, it is:
+
+     int setsockopt(int s, int level, int optname,
+          const char *optval, int optlen);
+
+The safest way to do this is the following, since in the first, optval is
+set to be void *, the code will translate with no problem between systems.
+The optval simply turns a boolean option on if the value is non-zero.  The
+sizeof(opt) doesn't really mean anything, it is meant for getsockopt().
+
+/***********************/
+/* Snippet to allow for*/
+/* socket reuse        */
+/***********************/
+
+    int sockfd, opt;
+
+    /*
+     * Open a TCP socket for the server, of type stream
+     */
+    if( (sockfd = socket( AF_INET, SOCK_STREAM, 0)) < 0 ) {
+	fprintf(stderr,"Error: Cannot open socket\n");
+	return 1;
+    }
+
+    /*
+     * SO_REUSEADDR is a boolean option, so set opt to be non-zero
+     */
+    opt = 1;
+
+    /* 
+     * Sets the socket to be reusable so after a crash 
+     * we can rebind to it.  This sets the variable right down
+     * at the socket level using the SOL_SOCKET level macro
+     */
+    if( setsockopt( sockfd, SOL_SOCKET, SO_REUSEADDR, 
+		   (char *)&opt, sizeof(opt)) == -1) {
+      fprintf(stderr,"Error: Cannot rebind to socket\n");
+      return 1;
+    }
+
+/*****DONE*****/
+
+I hope this helps the students when they get to this part
